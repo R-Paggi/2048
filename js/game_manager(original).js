@@ -1,58 +1,34 @@
 function GameManager(size, InputManager, Actuator, StorageManager) {
-  this.size           = size;
+  this.size           = size; // Size of the grid
   this.inputManager   = new InputManager;
   this.storageManager = new StorageManager;
   this.actuator       = new Actuator;
 
   this.startTiles     = 2;
-  this.winningValue = 2048;
-  this.fourTileProbability = 0.1;
-
-  try {
-    this.inverseMode = localStorage.getItem("supreme2048_mode") === "inverse";
-  } catch (e) {
-    this.inverseMode = false;
-  }
-
-  this.moveCount  = 0;
-  this.maxTile    = 0;
-  this.startTime  = null;
 
   this.inputManager.on("move", this.move.bind(this));
   this.inputManager.on("restart", this.restart.bind(this));
   this.inputManager.on("keepPlaying", this.keepPlaying.bind(this));
-  this.inputManager.on("setInverseMode", this.setInverseMode.bind(this));
-
-  var self = this;
-  document.addEventListener("setInverseMode", function (e) {
-    self.setInverseMode(e.detail);
-  });
 
   this.setup();
 }
 
-GameManager.prototype.setInverseMode = function (enabled) {
-  this.inverseMode = enabled;
-  this.storageManager.clearGameState();
-  this.actuator.continueGame();
-  this.setup();
-};
-
+// Restart the game
 GameManager.prototype.restart = function () {
   this.storageManager.clearGameState();
-  this.actuator.continueGame();
+  this.actuator.continueGame(); // Clear the game won/lost message
   this.setup();
 };
 
 // Keep playing after winning (allows going over 2048)
 GameManager.prototype.keepPlaying = function () {
-  this.keepPlayingFlag = true;
+  this.keepPlaying = true;
   this.actuator.continueGame(); // Clear the game won/lost message
 };
 
 // Return true if the game is lost, or has won and the user hasn't kept playing
 GameManager.prototype.isGameTerminated = function () {
-  return this.over || (this.won && !this.keepPlayingFlag);
+  return this.over || (this.won && !this.keepPlaying);
 };
 
 // Set up the game
@@ -66,16 +42,13 @@ GameManager.prototype.setup = function () {
     this.score       = previousState.score;
     this.over        = previousState.over;
     this.won         = previousState.won;
-    this.keepPlayingFlag  = previousState.keepPlaying ;
+    this.keepPlaying = previousState.keepPlaying;
   } else {
     this.grid        = new Grid(this.size);
     this.score       = 0;
     this.over        = false;
     this.won         = false;
-    this.keepPlayingFlag = false;
-    this.moveCount   = 0;
-    this.maxTile     = 0;
-    this.startTime   = Date.now();
+    this.keepPlaying = false;
 
     // Add the initial tiles
     this.addStartTiles();
@@ -85,74 +58,44 @@ GameManager.prototype.setup = function () {
   this.actuate();
 };
 
+// Set up the initial tiles to start the game with
 GameManager.prototype.addStartTiles = function () {
-  if (this.inverseMode) {
-    this.fillBoardInverse();
-  } else {
-    for (var i = 0; i < this.startTiles; i++) {
-      this.addRandomTile();
-    }
+  for (var i = 0; i < this.startTiles; i++) {
+    this.addRandomTile();
   }
 };
 
-GameManager.prototype.fillBoardInverse = function () {
-  var cells = [];
-  for (var x = 0; x < this.size; x++) {
-    for (var y = 0; y < this.size; y++) {
-      cells.push({ x: x, y: y });
-    }
-  }
-  for (var k = 0; k < cells.length; k++) {
-    var value = Math.random() < 0.5 ? 2048 : 1024;
-    var tile = new Tile(cells[k], value);
-    this.grid.insertTile(tile);
-  }
-};
-
+// Adds a tile in a random position
 GameManager.prototype.addRandomTile = function () {
   if (this.grid.cellsAvailable()) {
-    var value;
-    if (this.inverseMode) {
-      value = Math.random() < 0.5 ? 2048 : 1024;
-    } else {
-      value = Math.random() < (1 - this.fourTileProbability) ? 2 : 4;
-    }
+    var value = Math.random() < 0.9 ? 2 : 4;
     var tile = new Tile(this.grid.randomAvailableCell(), value);
+
     this.grid.insertTile(tile);
   }
 };
 
+// Sends the updated grid to the actuator
 GameManager.prototype.actuate = function () {
-  if (!this.inverseMode && this.storageManager.getBestScore() < this.score) {
+  if (this.storageManager.getBestScore() < this.score) {
     this.storageManager.setBestScore(this.score);
   }
 
-  this.saveGameState();
-
-  var elapsed = this.startTime ? Math.floor((Date.now() - this.startTime) / 1000) : 0;
-
-  this.actuator.actuate(this.grid, {
-    score:       this.inverseMode ? 0 : this.score,
-    over:        this.over,
-    won:         this.won,
-    bestScore:   this.storageManager.getBestScore(),
-    terminated:  this.isGameTerminated(),
-    inverseMode: this.inverseMode,
-    stats: {
-      score:     this.score,
-      maxTile:   this.maxTile,
-      moves:     this.moveCount,
-      time:      elapsed
-    }
-  });
-};
-
-GameManager.prototype.saveGameState = function () {
+  // Clear the state when the game is over (game over only, not win)
   if (this.over) {
     this.storageManager.clearGameState();
   } else {
     this.storageManager.setGameState(this.serialize());
   }
+
+  this.actuator.actuate(this.grid, {
+    score:      this.score,
+    over:       this.over,
+    won:        this.won,
+    bestScore:  this.storageManager.getBestScore(),
+    terminated: this.isGameTerminated()
+  });
+
 };
 
 // Represent the current game as an object
@@ -162,7 +105,7 @@ GameManager.prototype.serialize = function () {
     score:       this.score,
     over:        this.over,
     won:         this.won,
-    keepPlaying: this.keepPlayingFlag
+    keepPlaying: this.keepPlaying
   };
 };
 
@@ -210,9 +153,21 @@ GameManager.prototype.move = function (direction) {
         var next      = self.grid.cellContent(positions.next);
 
         // Only one merger per row traversal?
-        var canMerge = next && next.value === tile.value && !next.mergedFrom;
-        if (canMerge) {
-            self.mergeTiles(tile, next, positions.next);
+        if (next && next.value === tile.value && !next.mergedFrom) {
+          var merged = new Tile(positions.next, tile.value * 2);
+          merged.mergedFrom = [tile, next];
+
+          self.grid.insertTile(merged);
+          self.grid.removeTile(tile);
+
+          // Converge the two tiles' positions
+          tile.updatePosition(positions.next);
+
+          // Update the score
+          self.score += merged.value;
+
+          // The mighty 2048 tile
+          if (merged.value === 2048) self.won = true;
         } else {
           self.moveTile(tile, positions.farthest);
         }
@@ -225,65 +180,14 @@ GameManager.prototype.move = function (direction) {
   });
 
   if (moved) {
-    if (!this.inverseMode) this.moveCount++;
+    this.addRandomTile();
 
-    this.grid.eachCell(function (x, y, tile) {
-      if (tile && !self.inverseMode && tile.value > self.maxTile) {
-        self.maxTile = tile.value;
-      }
-    });
-
-    if (this.inverseMode) {
-      if (this.isBoardEmpty()) {
-        this.won = true;
-      } else {
-        this.addRandomTile();
-        if (!this.grid.cellsAvailable() && !this.tileMatchesAvailable()) {
-          this.over = true;
-        }
-      }
-    } else {
-      this.addRandomTile();
-      if (!this.movesAvailable()) {
-        this.over = true;
-      }
+    if (!this.movesAvailable()) {
+      this.over = true; // Game over!
     }
 
     this.actuate();
   }
-};
-
-GameManager.prototype.mergeTiles = function (tile, next, position) {
-  if (this.inverseMode) {
-    var half = tile.value / 2;
-    if (half < 2) {
-      this.grid.removeTile(tile);
-      this.grid.removeTile(next);
-      tile.updatePosition(position);
-    } else {
-      var merged = new Tile(position, half);
-      merged.mergedFrom = [tile, next];
-      this.grid.insertTile(merged);
-      this.grid.removeTile(tile);
-      tile.updatePosition(position);
-    }
-  } else {
-    var merged = new Tile(position, tile.value * 2);
-    merged.mergedFrom = [tile, next];
-    this.grid.insertTile(merged);
-    this.grid.removeTile(tile);
-    tile.updatePosition(position);
-    this.score += merged.value;
-    if (merged.value === this.winningValue) this.won = true;
-  }
-};
-
-GameManager.prototype.isBoardEmpty = function () {
-  var empty = true;
-  this.grid.eachCell(function (x, y, tile) {
-    if (tile) empty = false;
-  });
-  return empty;
 };
 
 // Get the vector representing the chosen direction
