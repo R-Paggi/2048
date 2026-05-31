@@ -5,6 +5,8 @@ function GameManager(size, InputManager, Actuator, StorageManager) {
   this.actuator       = new Actuator;
 
   this.startTiles     = 2;
+  this.winningValue = 32;
+  this.fourTileProbability = 0.1;
 
   this.inputManager.on("move", this.move.bind(this));
   this.inputManager.on("restart", this.restart.bind(this));
@@ -22,13 +24,13 @@ GameManager.prototype.restart = function () {
 
 // Keep playing after winning (allows going over 2048)
 GameManager.prototype.keepPlaying = function () {
-  this.keepPlaying = true;
+  this.keepPlayingFlag = true;
   this.actuator.continueGame(); // Clear the game won/lost message
 };
 
 // Return true if the game is lost, or has won and the user hasn't kept playing
 GameManager.prototype.isGameTerminated = function () {
-  return this.over || (this.won && !this.keepPlaying);
+  return this.over || (this.won && !this.keepPlayingFlag);
 };
 
 // Set up the game
@@ -42,13 +44,13 @@ GameManager.prototype.setup = function () {
     this.score       = previousState.score;
     this.over        = previousState.over;
     this.won         = previousState.won;
-    this.keepPlaying = previousState.keepPlaying;
+    this.keepPlayingFlag  = previousState.keepPlaying ;
   } else {
     this.grid        = new Grid(this.size);
     this.score       = 0;
     this.over        = false;
     this.won         = false;
-    this.keepPlaying = false;
+    this.keepPlayingFlag = false;
 
     // Add the initial tiles
     this.addStartTiles();
@@ -68,7 +70,7 @@ GameManager.prototype.addStartTiles = function () {
 // Adds a tile in a random position
 GameManager.prototype.addRandomTile = function () {
   if (this.grid.cellsAvailable()) {
-    var value = Math.random() < 0.9 ? 2 : 4;
+    var value = Math.random() < (1 - this.fourTileProbability) ? 2 : 4;
     var tile = new Tile(this.grid.randomAvailableCell(), value);
 
     this.grid.insertTile(tile);
@@ -81,12 +83,7 @@ GameManager.prototype.actuate = function () {
     this.storageManager.setBestScore(this.score);
   }
 
-  // Clear the state when the game is over (game over only, not win)
-  if (this.over) {
-    this.storageManager.clearGameState();
-  } else {
-    this.storageManager.setGameState(this.serialize());
-  }
+  this.saveGameState();
 
   this.actuator.actuate(this.grid, {
     score:      this.score,
@@ -98,6 +95,14 @@ GameManager.prototype.actuate = function () {
 
 };
 
+GameManager.prototype.saveGameState = function () {
+  if (this.over) {
+    this.storageManager.clearGameState();
+  } else {
+    this.storageManager.setGameState(this.serialize());
+  }
+};
+
 // Represent the current game as an object
 GameManager.prototype.serialize = function () {
   return {
@@ -105,7 +110,7 @@ GameManager.prototype.serialize = function () {
     score:       this.score,
     over:        this.over,
     won:         this.won,
-    keepPlaying: this.keepPlaying
+    keepPlaying: this.keepPlayingFlag
   };
 };
 
@@ -153,21 +158,9 @@ GameManager.prototype.move = function (direction) {
         var next      = self.grid.cellContent(positions.next);
 
         // Only one merger per row traversal?
-        if (next && next.value === tile.value && !next.mergedFrom) {
-          var merged = new Tile(positions.next, tile.value * 2);
-          merged.mergedFrom = [tile, next];
-
-          self.grid.insertTile(merged);
-          self.grid.removeTile(tile);
-
-          // Converge the two tiles' positions
-          tile.updatePosition(positions.next);
-
-          // Update the score
-          self.score += merged.value;
-
-          // The mighty 2048 tile
-          if (merged.value === 2048) self.won = true;
+        var canMerge = next && next.value === tile.value && !next.mergedFrom;
+        if (canMerge) {
+            self.mergeTiles(tile, next, positions.next);
         } else {
           self.moveTile(tile, positions.farthest);
         }
@@ -188,6 +181,16 @@ GameManager.prototype.move = function (direction) {
 
     this.actuate();
   }
+};
+
+GameManager.prototype.mergeTiles = function (tile, next, position) {
+  var merged = new Tile(position, tile.value * 2);
+  merged.mergedFrom = [tile, next];
+  this.grid.insertTile(merged);
+  this.grid.removeTile(tile);
+  tile.updatePosition(position);
+  this.score += merged.value;
+  if (merged.value === this.winningValue) this.won = true;
 };
 
 // Get the vector representing the chosen direction
