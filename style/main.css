@@ -393,6 +393,14 @@ hr {
     @media screen and (max-width: 520px) {
       .tile.tile-super .tile-inner {
         font-size: 10px; } }
+  .tile.tile-bomb .tile-inner {
+    color: #f9f6f2;
+    background: #2d2a32;
+    box-shadow: inset 0 0 0 4px rgba(246, 94, 59, 0.45);
+    font-size: 52px; }
+    @media screen and (max-width: 520px) {
+      .tile.tile-bomb .tile-inner {
+        font-size: 32px; } }
 
 @-webkit-keyframes appear {
   0% {

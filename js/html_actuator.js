@@ -23,7 +23,9 @@ HTMLActuator.prototype.actuate = function (grid, metadata) {
     bestScore: metadata.bestScore,
     over: metadata.over,
     won: metadata.won,
+    gameMode: metadata.gameMode,
     inverseMode: metadata.inverseMode,
+    bombMode: metadata.bombMode,
     stats: metadata.stats
   };
 
@@ -273,18 +275,19 @@ HTMLActuator.prototype.buildShareCanvas = function () {
     for (var x = 0; x < size; x++) {
       var cell = grid.cells[x][y];
       var value = cell ? cell.value : null;
+      var isBomb = cell && cell.type === "bomb";
       var tileX = boardX + gap + x * (tileSize + gap);
       var tileY = boardY + gap + y * (tileSize + gap);
 
       this.drawRoundRect(context, tileX, tileY, tileSize, tileSize, 8,
-                         value ? this.tileColor(value) : "#cdc1b4");
+                         cell ? this.shareCellColor(cell) : "#cdc1b4");
 
-      if (value) {
-        context.fillStyle = value <= 4 ? "#776e65" : "#f9f6f2";
-        context.font = "bold " + this.shareTileFontSize(value, tileSize) + "px Arial";
+      if (cell) {
+        context.fillStyle = isBomb || value > 4 ? "#f9f6f2" : "#776e65";
+        context.font = "bold " + this.shareTileFontSize(isBomb ? "!" : value, tileSize) + "px Arial";
         context.textAlign = "center";
         context.textBaseline = "middle";
-        context.fillText(value, tileX + tileSize / 2, tileY + tileSize / 2);
+        context.fillText(isBomb ? "!" : value, tileX + tileSize / 2, tileY + tileSize / 2);
       }
     }
   }
@@ -295,6 +298,12 @@ HTMLActuator.prototype.buildShareCanvas = function () {
   context.fillText("Gerado pelo Supreme 2048", canvas.width / 2, 1010);
 
   return canvas;
+};
+
+HTMLActuator.prototype.shareCellColor = function (cell) {
+  if (cell.type === "bomb") return "#2d2a32";
+
+  return this.tileColor(cell.value);
 };
 
 HTMLActuator.prototype.drawRoundRect = function (context, x, y, width, height, radius, color) {
@@ -425,16 +434,18 @@ HTMLActuator.prototype.addTile = function (tile) {
   var inner     = document.createElement("div");
   var position  = tile.previousPosition || { x: tile.x, y: tile.y };
   var positionClass = this.positionClass(position);
+  var isBomb = tile.type === "bomb";
+  var tileClass = isBomb ? "tile-bomb" : "tile-" + tile.value;
 
   // We can't use classlist because it somehow glitches when replacing classes
-  var classes = ["tile", "tile-" + tile.value, positionClass];
+  var classes = ["tile", tileClass, positionClass];
 
-  if (tile.value > 2048) classes.push("tile-super");
+  if (!isBomb && tile.value > 2048) classes.push("tile-super");
 
   this.applyClasses(wrapper, classes);
 
   inner.classList.add("tile-inner");
-  inner.textContent = tile.value;
+  inner.textContent = isBomb ? "!" : tile.value;
 
   if (tile.previousPosition) {
     // Make sure that the tile gets rendered in the previous position first

@@ -52,6 +52,11 @@ window.requestAnimationFrame(function () {
       id: "inverse",
       name: "Modo Inverso",
       description: "Tiles com valores altos surgem no tabuleiro. Cancele tiles iguais para limpar o tabuleiro."
+    },
+    {
+      id: "bomb",
+      name: "Modo Bomba",
+      description: "A cada 5 jogadas, uma bomba aparece e explode tiles ao colidir."
     }
   ];
 
@@ -88,11 +93,19 @@ window.requestAnimationFrame(function () {
   }
 
   function getSavedMode() {
-    try { return localStorage.getItem(MODE_KEY) || "classic"; } catch (e) { return "classic"; }
+    try { return normalizeMode(localStorage.getItem(MODE_KEY)); } catch (e) { return "classic"; }
   }
 
   function saveMode(modeId) {
     try { localStorage.setItem(MODE_KEY, modeId); } catch (e) {}
+  }
+
+  function normalizeMode(modeId) {
+    for (var i = 0; i < modes.length; i++) {
+      if (modes[i].id === modeId) return modeId;
+    }
+
+    return "classic";
   }
 
   function getSavedTimerConfig() {
@@ -120,8 +133,9 @@ window.requestAnimationFrame(function () {
   }
 
   function applyMode(modeId) {
+    modeId = normalizeMode(modeId);
     document.body.setAttribute("data-mode", modeId);
-    var event = new CustomEvent("setInverseMode", { detail: modeId === "inverse" });
+    var event = new CustomEvent("setGameMode", { detail: modeId });
     document.dispatchEvent(event);
   }
 
@@ -383,9 +397,9 @@ window.requestAnimationFrame(function () {
     }, ".modes-button");
     createActionButton("settings-button timer-button", "Timer", "Timer por Jogada", openTimer, ".stats-button");
 
-    if (savedMode === "inverse") {
+    if (savedMode !== "classic") {
       window.addEventListener("load", function () {
-        var event = new CustomEvent("setInverseMode", { detail: true });
+        var event = new CustomEvent("setGameMode", { detail: savedMode });
         document.dispatchEvent(event);
       });
     }

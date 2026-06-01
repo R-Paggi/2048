@@ -7,16 +7,14 @@ function GameManager(size, InputManager, Actuator, StorageManager) {
   this.startTiles     = 2;
   this.winningValue = 2048;
   this.fourTileProbability = 0.1;
+  this.bombSpawnFrequency = 5;
 
-  try {
-    this.inverseMode = localStorage.getItem("supreme2048_mode") === "inverse";
-  } catch (e) {
-    this.inverseMode = false;
-  }
+  this.applyGameMode(this.getSavedGameMode());
 
   this.moveCount  = 0;
   this.maxTile    = 0;
   this.startTime  = null;
+  this.bombMoveCounter = 0;
   this.timerEnabled = false;
   this.timerLimit = 5;
   this.timerRemaining = 0;
@@ -34,10 +32,14 @@ function GameManager(size, InputManager, Actuator, StorageManager) {
   this.inputManager.on("restart", this.restart.bind(this));
   this.inputManager.on("keepPlaying", this.keepPlaying.bind(this));
   this.inputManager.on("setInverseMode", this.setInverseMode.bind(this));
+  this.inputManager.on("setGameMode", this.setGameMode.bind(this));
 
   var self = this;
   document.addEventListener("setInverseMode", function (e) {
     self.setInverseMode(e.detail);
+  });
+  document.addEventListener("setGameMode", function (e) {
+    self.setGameMode(e.detail);
   });
   document.addEventListener("setMoveTimer", function (e) {
     self.setMoveTimer(e.detail);
@@ -46,8 +48,39 @@ function GameManager(size, InputManager, Actuator, StorageManager) {
   this.setup();
 }
 
+GameManager.prototype.normalizeGameMode = function (mode) {
+  return mode === "inverse" || mode === "bomb" ? mode : "classic";
+};
+
+GameManager.prototype.getSavedGameMode = function () {
+  try {
+    return this.normalizeGameMode(localStorage.getItem("supreme2048_mode"));
+  } catch (e) {
+    return "classic";
+  }
+};
+
+GameManager.prototype.applyGameMode = function (mode) {
+  this.gameMode = this.normalizeGameMode(mode);
+  this.inverseMode = this.gameMode === "inverse";
+  this.bombMode = this.gameMode === "bomb";
+};
+
 GameManager.prototype.setInverseMode = function (enabled) {
-  this.inverseMode = enabled;
+  this.setGameMode(enabled ? "inverse" : "classic");
+};
+
+GameManager.prototype.setGameMode = function (mode) {
+  var nextMode = this.normalizeGameMode(mode);
+  if (nextMode === this.gameMode) return;
+
+  this.applyGameMode(nextMode);
+  this.bombMoveCounter = 0;
+
+  try {
+    localStorage.setItem("supreme2048_mode", this.gameMode);
+  } catch (e) {}
+
   this.storageManager.clearGameState();
   this.actuator.continueGame();
   this.setup();
@@ -95,12 +128,14 @@ GameManager.prototype.setup = function () {
 
   // Reload the game from a previous game if present
   if (previousState) {
+    this.applyGameMode(previousState.gameMode || this.gameMode);
     this.grid        = new Grid(previousState.grid.size,
                                 previousState.grid.cells); // Reload grid
     this.score       = previousState.score;
     this.over        = previousState.over;
     this.won         = previousState.won;
     this.keepPlayingFlag  = previousState.keepPlaying ;
+    this.bombMoveCounter = previousState.bombMoveCounter || 0;
   } else {
     this.grid        = new Grid(this.size);
     this.score       = 0;
@@ -110,6 +145,7 @@ GameManager.prototype.setup = function () {
     this.moveCount   = 0;
     this.maxTile     = 0;
     this.startTime   = Date.now();
+    this.bombMoveCounter = 0;
 
     // Add the initial tiles
     this.addStartTiles();
@@ -157,6 +193,25 @@ GameManager.prototype.addRandomTile = function () {
   }
 };
 
+GameManager.prototype.addBombTile = function () {
+  if (!this.grid.cellsAvailable()) return false;
+
+  var tile = new Tile(this.grid.randomAvailableCell(), 0, "bomb");
+  this.grid.insertTile(tile);
+
+  return true;
+};
+
+GameManager.prototype.maybeAddBombTile = function () {
+  if (!this.bombMode) return;
+
+  this.bombMoveCounter++;
+
+  if (this.bombMoveCounter >= this.bombSpawnFrequency && this.addBombTile()) {
+    this.bombMoveCounter = 0;
+  }
+};
+
 GameManager.prototype.actuate = function () {
   if (!this.inverseMode && this.storageManager.getBestScore() < this.score) {
     this.storageManager.setBestScore(this.score);
@@ -172,7 +227,9 @@ GameManager.prototype.actuate = function () {
     won:         this.won,
     bestScore:   this.storageManager.getBestScore(),
     terminated:  this.isGameTerminated(),
+    gameMode:    this.gameMode,
     inverseMode: this.inverseMode,
+    bombMode:    this.bombMode,
     timer: {
       enabled:   this.timerEnabled && !this.isGameTerminated(),
       limit:     this.timerLimit,
@@ -285,7 +342,7 @@ GameManager.prototype.canMoveDirection = function (direction) {
         var cell = { x: x + vector.x, y: y + vector.y };
         var other = this.grid.cellContent(cell);
 
-        if (this.grid.withinBounds(cell) && (!other || other.value === tile.value)) {
+        if (this.grid.withinBounds(cell) && (!other || this.tilesCanInteract(tile, other))) {
           return true;
         }
       }
@@ -302,7 +359,9 @@ GameManager.prototype.serialize = function () {
     score:       this.score,
     over:        this.over,
     won:         this.won,
-    keepPlaying: this.keepPlayingFlag
+    keepPlaying: this.keepPlayingFlag,
+    gameMode:    this.gameMode,
+    bombMoveCounter: this.bombMoveCounter
   };
 };
 
@@ -350,9 +409,13 @@ GameManager.prototype.move = function (direction) {
         var next      = self.grid.cellContent(positions.next);
 
         // Only one merger per row traversal?
-        var canMerge = next && next.value === tile.value && !next.mergedFrom;
-        if (canMerge) {
+        var canInteract = next && self.tilesCanInteract(tile, next) && !next.mergedFrom;
+        if (canInteract) {
+          if (self.isBombInteraction(tile, next)) {
+            self.explodeBomb(tile, next, positions.next);
+          } else {
             self.mergeTiles(tile, next, positions.next);
+          }
         } else {
           self.moveTile(tile, positions.farthest);
         }
@@ -384,6 +447,7 @@ GameManager.prototype.move = function (direction) {
       }
     } else {
       this.addRandomTile();
+      this.maybeAddBombTile();
       if (!this.movesAvailable() && (!this.won || this.keepPlayingFlag)) {
         this.over = true;
       }
@@ -391,6 +455,38 @@ GameManager.prototype.move = function (direction) {
 
     this.restartMoveTimer();
     this.actuate();
+  }
+};
+
+GameManager.prototype.isBombTile = function (tile) {
+  return tile && tile.type === "bomb";
+};
+
+GameManager.prototype.isBombInteraction = function (tile, other) {
+  return this.bombMode && (this.isBombTile(tile) || this.isBombTile(other));
+};
+
+GameManager.prototype.tilesCanInteract = function (tile, other) {
+  if (!tile || !other) return false;
+  if (this.isBombInteraction(tile, other)) return true;
+
+  return tile.value === other.value;
+};
+
+GameManager.prototype.explodeBomb = function (tile, next, position) {
+  this.grid.removeTile(tile);
+  this.grid.removeTile(next);
+  tile.updatePosition(position);
+
+  for (var x = position.x - 1; x <= position.x + 1; x++) {
+    for (var y = position.y - 1; y <= position.y + 1; y++) {
+      var cell = { x: x, y: y };
+      var affectedTile = this.grid.cellContent(cell);
+
+      if (affectedTile) {
+        this.grid.removeTile(affectedTile);
+      }
+    }
   }
 };
 
@@ -489,7 +585,7 @@ GameManager.prototype.tileMatchesAvailable = function () {
 
           var other  = self.grid.cellContent(cell);
 
-          if (other && other.value === tile.value) {
+          if (this.tilesCanInteract(tile, other)) {
             return true; // These two tiles can be merged
           }
         }
