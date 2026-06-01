@@ -53,17 +53,18 @@ KeyboardInputManager.prototype.listen = function () {
   document.addEventListener("keydown", function (event) {
     var modifiers = event.altKey || event.ctrlKey || event.metaKey ||
                     event.shiftKey;
-    var mapped    = map[event.which];
 
-    if (!modifiers) {
-      if (mapped !== undefined) {
-        event.preventDefault();
-        self.emit("move", mapped);
-      }
+    if (modifiers) return;
+
+    var mapped = map[event.which];
+    if (mapped !== undefined) {
+      event.preventDefault();
+      self.emit("move", mapped);
+      return;
     }
 
     // R key restarts the game
-    if (!modifiers && event.which === 82) {
+    if (event.which === 82) {
       self.restart.call(self, event);
     }
   });

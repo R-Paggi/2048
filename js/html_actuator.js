@@ -6,7 +6,7 @@ function HTMLActuator() {
 
   this.score = 0;
 
-  window._actuator = this;
+  document.addEventListener("showStatsHistory", this.showHistory.bind(this));
 }
 
 HTMLActuator.prototype.actuate = function (grid, metadata) {

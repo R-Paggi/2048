@@ -279,11 +279,7 @@ GameManager.prototype.mergeTiles = function (tile, next, position) {
 };
 
 GameManager.prototype.isBoardEmpty = function () {
-  var empty = true;
-  this.grid.eachCell(function (x, y, tile) {
-    if (tile) empty = false;
-  });
-  return empty;
+  return this.grid.availableCells().length === this.size * this.size;
 };
 
 // Get the vector representing the chosen direction

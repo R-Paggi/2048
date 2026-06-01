@@ -204,56 +204,21 @@ window.requestAnimationFrame(function () {
     document.body.appendChild(overlay);
   }
 
-  function createSettingsButton() {
+  function createActionButton(className, text, ariaLabel, onClick, afterSelector) {
     var gameContainer = document.querySelector(".game-container");
-    if (!gameContainer) return;
+    if (!gameContainer) return null;
 
     var btn = document.createElement("button");
-    btn.className = "settings-button";
-    btn.textContent = "Mudar Tema";
-    btn.setAttribute("aria-label", "Mudar Tema");
-    btn.addEventListener("click", openSettings);
+    btn.className = className;
+    btn.textContent = text;
+    btn.setAttribute("aria-label", ariaLabel);
+    btn.addEventListener("click", onClick);
 
-    gameContainer.parentNode.insertBefore(btn, gameContainer.nextSibling);
-  }
+    var reference = afterSelector ? document.querySelector(afterSelector) : null;
+    reference = reference || gameContainer;
+    reference.parentNode.insertBefore(btn, reference.nextSibling);
 
-  function createModesButton() {
-    var gameContainer = document.querySelector(".game-container");
-    if (!gameContainer) return;
-
-    var btn = document.createElement("button");
-    btn.className = "settings-button modes-button";
-    btn.textContent = "Modos Extra";
-    btn.setAttribute("aria-label", "Modos Extra");
-    btn.addEventListener("click", openModes);
-
-    var themeBtn = document.querySelector(".settings-button");
-    if (themeBtn) {
-      themeBtn.parentNode.insertBefore(btn, themeBtn.nextSibling);
-    } else {
-      gameContainer.parentNode.insertBefore(btn, gameContainer.nextSibling);
-    }
-  }
-
-  function createStatsButton() {
-    var gameContainer = document.querySelector(".game-container");
-    if (!gameContainer) return;
-
-    var btn = document.createElement("button");
-    btn.className = "settings-button stats-button";
-    btn.textContent = "Stats";
-    btn.setAttribute("aria-label", "Estatísticas");
-    btn.addEventListener("click", function () {
-      var actuator = window._actuator;
-      if (actuator) actuator.showHistory();
-    });
-
-    var modesBtn = document.querySelector(".modes-button");
-    if (modesBtn) {
-      modesBtn.parentNode.insertBefore(btn, modesBtn.nextSibling);
-    } else {
-      gameContainer.parentNode.insertBefore(btn, gameContainer.nextSibling);
-    }
+    return btn;
   }
 
   function openSettings() {
@@ -280,9 +245,11 @@ window.requestAnimationFrame(function () {
 
     createSettingsModal();
     createModesModal();
-    createSettingsButton();
-    createModesButton();
-    createStatsButton();
+    createActionButton("settings-button", "Mudar Tema", "Mudar Tema", openSettings);
+    createActionButton("settings-button modes-button", "Modos Extra", "Modos Extra", openModes, ".settings-button");
+    createActionButton("settings-button stats-button", "Stats", "Estatísticas", function () {
+      document.dispatchEvent(new CustomEvent("showStatsHistory"));
+    }, ".modes-button");
 
     if (savedMode === "inverse") {
       window.addEventListener("load", function () {
