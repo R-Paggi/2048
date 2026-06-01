@@ -48,6 +48,10 @@ GameManager.prototype.restart = function () {
 GameManager.prototype.keepPlaying = function () {
   this.keepPlayingFlag = true;
   this.actuator.continueGame(); // Clear the game won/lost message
+  if (!this.inverseMode && !this.movesAvailable()) {
+    this.over = true;
+    this.actuate();
+  }
 };
 
 // Return true if the game is lost, or has won and the user hasn't kept playing
@@ -244,7 +248,7 @@ GameManager.prototype.move = function (direction) {
       }
     } else {
       this.addRandomTile();
-      if (!this.movesAvailable()) {
+      if (!this.movesAvailable() && (!this.won || this.keepPlayingFlag)) {
         this.over = true;
       }
     }
