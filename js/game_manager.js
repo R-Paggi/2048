@@ -17,6 +17,18 @@ function GameManager(size, InputManager, Actuator, StorageManager) {
   this.moveCount  = 0;
   this.maxTile    = 0;
   this.startTime  = null;
+  this.timerEnabled = false;
+  this.timerLimit = 5;
+  this.timerRemaining = 0;
+  this.timerInterval = null;
+
+  try {
+    this.timerEnabled = localStorage.getItem("supreme2048_timer_enabled") === "true";
+    this.timerLimit = parseInt(localStorage.getItem("supreme2048_timer_limit"), 10) === 10 ? 10 : 5;
+  } catch (e) {
+    this.timerEnabled = false;
+    this.timerLimit = 5;
+  }
 
   this.inputManager.on("move", this.move.bind(this));
   this.inputManager.on("restart", this.restart.bind(this));
@@ -27,6 +39,9 @@ function GameManager(size, InputManager, Actuator, StorageManager) {
   document.addEventListener("setInverseMode", function (e) {
     self.setInverseMode(e.detail);
   });
+  document.addEventListener("setMoveTimer", function (e) {
+    self.setMoveTimer(e.detail);
+  });
 
   this.setup();
 }
@@ -36,6 +51,19 @@ GameManager.prototype.setInverseMode = function (enabled) {
   this.storageManager.clearGameState();
   this.actuator.continueGame();
   this.setup();
+};
+
+GameManager.prototype.setMoveTimer = function (config) {
+  this.timerEnabled = !!(config && config.enabled);
+  this.timerLimit = config && config.limit === 10 ? 10 : 5;
+
+  try {
+    localStorage.setItem("supreme2048_timer_enabled", this.timerEnabled ? "true" : "false");
+    localStorage.setItem("supreme2048_timer_limit", this.timerLimit);
+  } catch (e) {}
+
+  this.restartMoveTimer();
+  this.actuate();
 };
 
 GameManager.prototype.restart = function () {
@@ -51,6 +79,8 @@ GameManager.prototype.keepPlaying = function () {
   if (!this.inverseMode && !this.movesAvailable()) {
     this.over = true;
     this.actuate();
+  } else {
+    this.restartMoveTimer();
   }
 };
 
@@ -86,6 +116,7 @@ GameManager.prototype.setup = function () {
   }
 
   // Update the actuator
+  this.restartMoveTimer();
   this.actuate();
 };
 
@@ -142,6 +173,11 @@ GameManager.prototype.actuate = function () {
     bestScore:   this.storageManager.getBestScore(),
     terminated:  this.isGameTerminated(),
     inverseMode: this.inverseMode,
+    timer: {
+      enabled:   this.timerEnabled && !this.isGameTerminated(),
+      limit:     this.timerLimit,
+      remaining: this.timerRemaining
+    },
     stats: {
       score:     this.score,
       maxTile:   this.maxTile,
@@ -157,6 +193,106 @@ GameManager.prototype.saveGameState = function () {
   } else {
     this.storageManager.setGameState(this.serialize());
   }
+};
+
+GameManager.prototype.clearMoveTimer = function () {
+  if (this.timerInterval) {
+    clearInterval(this.timerInterval);
+    this.timerInterval = null;
+  }
+};
+
+GameManager.prototype.restartMoveTimer = function () {
+  var self = this;
+
+  this.clearMoveTimer();
+
+  if (!this.timerEnabled || this.isGameTerminated()) {
+    this.timerRemaining = 0;
+    if (this.actuator.updateMoveTimer) {
+      this.actuator.updateMoveTimer({
+        enabled: false,
+        limit: this.timerLimit,
+        remaining: this.timerRemaining
+      });
+    }
+    return;
+  }
+
+  this.timerRemaining = this.timerLimit;
+  if (this.actuator.updateMoveTimer) {
+    this.actuator.updateMoveTimer({
+      enabled: true,
+      limit: this.timerLimit,
+      remaining: this.timerRemaining
+    });
+  }
+
+  this.timerInterval = setInterval(function () {
+    self.timerRemaining--;
+
+    if (self.actuator.updateMoveTimer) {
+      self.actuator.updateMoveTimer({
+        enabled: true,
+        limit: self.timerLimit,
+        remaining: Math.max(self.timerRemaining, 0)
+      });
+    }
+
+    if (self.timerRemaining <= 0) {
+      self.clearMoveTimer();
+      self.handleMoveTimerExpired();
+    }
+  }, 1000);
+};
+
+GameManager.prototype.handleMoveTimerExpired = function () {
+  if (this.isGameTerminated()) return;
+
+  var directions = this.availableMoveDirections();
+
+  if (!directions.length) {
+    this.over = true;
+    this.restartMoveTimer();
+    this.actuate();
+    return;
+  }
+
+  var direction = directions[Math.floor(Math.random() * directions.length)];
+  this.move(direction);
+};
+
+GameManager.prototype.availableMoveDirections = function () {
+  var directions = [];
+
+  for (var direction = 0; direction < 4; direction++) {
+    if (this.canMoveDirection(direction)) {
+      directions.push(direction);
+    }
+  }
+
+  return directions;
+};
+
+GameManager.prototype.canMoveDirection = function (direction) {
+  var vector = this.getVector(direction);
+
+  for (var x = 0; x < this.size; x++) {
+    for (var y = 0; y < this.size; y++) {
+      var tile = this.grid.cellContent({ x: x, y: y });
+
+      if (tile) {
+        var cell = { x: x + vector.x, y: y + vector.y };
+        var other = this.grid.cellContent(cell);
+
+        if (this.grid.withinBounds(cell) && (!other || other.value === tile.value)) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
 };
 
 // Represent the current game as an object
@@ -253,6 +389,7 @@ GameManager.prototype.move = function (direction) {
       }
     }
 
+    this.restartMoveTimer();
     this.actuate();
   }
 };

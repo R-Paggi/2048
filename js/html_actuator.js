@@ -3,6 +3,8 @@ function HTMLActuator() {
   this.scoreContainer   = document.querySelector(".score-container");
   this.bestContainer    = document.querySelector(".best-container");
   this.messageContainer = document.querySelector(".game-message");
+  this.timerContainer   = document.querySelector(".timer-container");
+  this.timerValue       = document.querySelector(".timer-value");
 
   this.score = 0;
   this.lastGridState = null;
@@ -38,6 +40,7 @@ HTMLActuator.prototype.actuate = function (grid, metadata) {
 
     self.updateScore(metadata.score);
     self.updateBestScore(metadata.bestScore);
+    self.updateMoveTimer(metadata.timer);
 
     if (metadata.terminated) {
       if (metadata.over) {
@@ -491,6 +494,26 @@ HTMLActuator.prototype.updateScore = function (score) {
 
 HTMLActuator.prototype.updateBestScore = function (bestScore) {
   this.bestContainer.textContent = bestScore;
+};
+
+HTMLActuator.prototype.updateMoveTimer = function (timer) {
+  if (!this.timerContainer || !this.timerValue) return;
+
+  if (!timer || !timer.enabled) {
+    this.timerContainer.classList.add("timer-hidden");
+    this.timerContainer.classList.remove("timer-warning");
+    this.timerValue.textContent = "--";
+    return;
+  }
+
+  this.timerContainer.classList.remove("timer-hidden");
+  this.timerValue.textContent = timer.remaining + "s";
+
+  if (timer.remaining <= 3) {
+    this.timerContainer.classList.add("timer-warning");
+  } else {
+    this.timerContainer.classList.remove("timer-warning");
+  }
 };
 
 HTMLActuator.prototype.message = function (won) {

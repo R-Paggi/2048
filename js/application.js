@@ -6,6 +6,8 @@ window.requestAnimationFrame(function () {
 (function () {
   var STORAGE_KEY = "supreme2048_theme";
   var MODE_KEY    = "supreme2048_mode";
+  var TIMER_ENABLED_KEY = "supreme2048_timer_enabled";
+  var TIMER_LIMIT_KEY   = "supreme2048_timer_limit";
 
   var themes = [
     {
@@ -53,6 +55,30 @@ window.requestAnimationFrame(function () {
     }
   ];
 
+  var timerOptions = [
+    {
+      id: "off",
+      name: "Desligado",
+      description: "Jogue sem limite de tempo por movimento.",
+      enabled: false,
+      limit: 0
+    },
+    {
+      id: "5",
+      name: "5 segundos",
+      description: "O jogo faz um movimento automatico se o tempo acabar.",
+      enabled: true,
+      limit: 5
+    },
+    {
+      id: "10",
+      name: "10 segundos",
+      description: "Mais tempo para pensar antes do movimento automatico.",
+      enabled: true,
+      limit: 10
+    }
+  ];
+
   function getSavedTheme() {
     try { return localStorage.getItem(STORAGE_KEY) || "default"; } catch (e) { return "default"; }
   }
@@ -69,6 +95,26 @@ window.requestAnimationFrame(function () {
     try { localStorage.setItem(MODE_KEY, modeId); } catch (e) {}
   }
 
+  function getSavedTimerConfig() {
+    try {
+      var enabled = localStorage.getItem(TIMER_ENABLED_KEY) === "true";
+      var limit = parseInt(localStorage.getItem(TIMER_LIMIT_KEY), 10);
+      return {
+        enabled: enabled,
+        limit: limit === 10 ? 10 : 5
+      };
+    } catch (e) {
+      return { enabled: false, limit: 5 };
+    }
+  }
+
+  function saveTimerConfig(config) {
+    try {
+      localStorage.setItem(TIMER_ENABLED_KEY, config.enabled ? "true" : "false");
+      localStorage.setItem(TIMER_LIMIT_KEY, config.limit);
+    } catch (e) {}
+  }
+
   function applyTheme(themeId) {
     document.body.setAttribute("data-theme", themeId);
   }
@@ -76,6 +122,12 @@ window.requestAnimationFrame(function () {
   function applyMode(modeId) {
     document.body.setAttribute("data-mode", modeId);
     var event = new CustomEvent("setInverseMode", { detail: modeId === "inverse" });
+    document.dispatchEvent(event);
+  }
+
+  function applyTimer(config) {
+    document.body.setAttribute("data-timer", config.enabled ? "on" : "off");
+    var event = new CustomEvent("setMoveTimer", { detail: config });
     document.dispatchEvent(event);
   }
 
@@ -204,6 +256,74 @@ window.requestAnimationFrame(function () {
     document.body.appendChild(overlay);
   }
 
+  function createTimerModal() {
+    var overlay = document.createElement("div");
+    overlay.className = "settings-overlay";
+    overlay.id = "timer-overlay";
+
+    var modal = document.createElement("div");
+    modal.className = "settings-modal";
+
+    var closeBtn = document.createElement("button");
+    closeBtn.className = "close-settings";
+    closeBtn.innerHTML = "&#x2715;";
+    closeBtn.setAttribute("aria-label", "Fechar timer");
+    closeBtn.addEventListener("click", closeTimer);
+
+    var title = document.createElement("h2");
+    title.textContent = "Timer por Jogada";
+
+    var list = document.createElement("div");
+    list.className = "mode-options";
+    list.id = "timer-options-list";
+
+    var currentConfig = getSavedTimerConfig();
+    var currentId = currentConfig.enabled ? String(currentConfig.limit) : "off";
+
+    timerOptions.forEach(function (optionData) {
+      var option = document.createElement("div");
+      option.className = "mode-option" + (optionData.id === currentId ? " selected" : "");
+      option.setAttribute("data-timer-id", optionData.id);
+
+      var name = document.createElement("div");
+      name.className = "mode-name";
+      name.textContent = optionData.name;
+
+      var desc = document.createElement("div");
+      desc.className = "mode-desc";
+      desc.textContent = optionData.description;
+
+      option.appendChild(name);
+      option.appendChild(desc);
+
+      option.addEventListener("click", function () {
+        list.querySelectorAll(".mode-option").forEach(function (el) { el.classList.remove("selected"); });
+        option.classList.add("selected");
+        var savedConfig = getSavedTimerConfig();
+        var config = {
+          enabled: optionData.enabled,
+          limit: optionData.limit || savedConfig.limit
+        };
+        saveTimerConfig(config);
+        applyTimer(config);
+        setTimeout(closeTimer, 300);
+      });
+
+      list.appendChild(option);
+    });
+
+    modal.appendChild(closeBtn);
+    modal.appendChild(title);
+    modal.appendChild(list);
+    overlay.appendChild(modal);
+
+    overlay.addEventListener("click", function (e) {
+      if (e.target === overlay) closeTimer();
+    });
+
+    document.body.appendChild(overlay);
+  }
+
   function createActionButton(className, text, ariaLabel, onClick, afterSelector) {
     var gameContainer = document.querySelector(".game-container");
     if (!gameContainer) return null;
@@ -237,19 +357,31 @@ window.requestAnimationFrame(function () {
     document.getElementById("modes-overlay").classList.remove("active");
   }
 
+  function openTimer() {
+    document.getElementById("timer-overlay").classList.add("active");
+  }
+
+  function closeTimer() {
+    document.getElementById("timer-overlay").classList.remove("active");
+  }
+
   function init() {
     applyTheme(getSavedTheme());
 
     var savedMode = getSavedMode();
+    var savedTimerConfig = getSavedTimerConfig();
     document.body.setAttribute("data-mode", savedMode);
+    document.body.setAttribute("data-timer", savedTimerConfig.enabled ? "on" : "off");
 
     createSettingsModal();
     createModesModal();
+    createTimerModal();
     createActionButton("settings-button", "Mudar Tema", "Mudar Tema", openSettings);
     createActionButton("settings-button modes-button", "Modos Extra", "Modos Extra", openModes, ".settings-button");
     createActionButton("settings-button stats-button", "Stats", "Estatísticas", function () {
       document.dispatchEvent(new CustomEvent("showStatsHistory"));
     }, ".modes-button");
+    createActionButton("settings-button timer-button", "Timer", "Timer por Jogada", openTimer, ".stats-button");
 
     if (savedMode === "inverse") {
       window.addEventListener("load", function () {
