@@ -5,6 +5,8 @@ function HTMLActuator() {
   this.messageContainer = document.querySelector(".game-message");
 
   this.score = 0;
+  this.lastGridState = null;
+  this.lastMetadata = null;
 
   document.addEventListener("showStatsHistory", this.showHistory.bind(this));
 }
@@ -13,6 +15,15 @@ HTMLActuator.prototype.actuate = function (grid, metadata) {
   var self = this;
 
   this.inverseMode = metadata.inverseMode;
+  this.lastGridState = grid.serialize();
+  this.lastMetadata = {
+    score: metadata.score,
+    bestScore: metadata.bestScore,
+    over: metadata.over,
+    won: metadata.won,
+    inverseMode: metadata.inverseMode,
+    stats: metadata.stats
+  };
 
   window.requestAnimationFrame(function () {
     self.clearContainer(self.tileContainer);
@@ -70,6 +81,7 @@ HTMLActuator.prototype.formatTime = function (seconds) {
 };
 
 HTMLActuator.prototype.showStats = function (stats, bestScore) {
+  var self = this;
   var existing = document.getElementById("stats-overlay");
   if (existing) existing.parentNode.removeChild(existing);
 
@@ -127,12 +139,200 @@ HTMLActuator.prototype.showStats = function (stats, bestScore) {
     overlay.parentNode.removeChild(overlay);
   });
 
+  var shareBtn = document.createElement("button");
+  shareBtn.className = "stats-btn stats-share-btn";
+  shareBtn.textContent = "Compartilhar";
+  shareBtn.addEventListener("click", function () {
+    self.shareResult();
+  });
+
+  btnRow.appendChild(shareBtn);
   btnRow.appendChild(closeBtn);
   box.appendChild(title);
   box.appendChild(grid);
   box.appendChild(btnRow);
   overlay.appendChild(box);
   document.body.appendChild(overlay);
+};
+
+HTMLActuator.prototype.shareResult = function () {
+  if (!this.lastGridState || !this.lastMetadata) return;
+
+  var canvas = this.buildShareCanvas();
+  var self = this;
+  var filename = "supreme-2048-resultado.png";
+
+  this.canvasToBlob(canvas, function (blob) {
+    if (!blob) {
+      self.downloadCanvas(canvas, filename);
+      return;
+    }
+
+    var fileSupported = typeof File !== "undefined";
+    var shareSupported = navigator.share && fileSupported;
+    var file = shareSupported ? new File([blob], filename, { type: "image/png" }) : null;
+    var canShare = false;
+
+    try {
+      canShare = shareSupported &&
+                 (!navigator.canShare || navigator.canShare({ files: [file] }));
+    } catch (e) {
+      canShare = false;
+    }
+
+    if (canShare) {
+      navigator.share({
+        title: "Supreme 2048",
+        text: "Meu resultado no Supreme 2048",
+        files: [file]
+      }).catch(function () {
+        self.downloadBlob(blob, filename);
+      });
+    } else {
+      self.downloadBlob(blob, filename);
+    }
+  });
+};
+
+HTMLActuator.prototype.canvasToBlob = function (canvas, callback) {
+  if (canvas.toBlob) {
+    canvas.toBlob(callback, "image/png");
+    return;
+  }
+
+  var data = canvas.toDataURL("image/png").split(",")[1];
+  var bytes = atob(data);
+  var buffer = new ArrayBuffer(bytes.length);
+  var view = new Uint8Array(buffer);
+
+  for (var i = 0; i < bytes.length; i++) {
+    view[i] = bytes.charCodeAt(i);
+  }
+
+  callback(new Blob([buffer], { type: "image/png" }));
+};
+
+HTMLActuator.prototype.downloadBlob = function (blob, filename) {
+  var url = URL.createObjectURL(blob);
+  var link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+HTMLActuator.prototype.downloadCanvas = function (canvas, filename) {
+  var link = document.createElement("a");
+  link.href = canvas.toDataURL("image/png");
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+HTMLActuator.prototype.buildShareCanvas = function () {
+  var canvas = document.createElement("canvas");
+  canvas.width = 900;
+  canvas.height = 1080;
+
+  var context = canvas.getContext("2d");
+  var grid = this.lastGridState;
+  var metadata = this.lastMetadata;
+  var stats = metadata.stats || {};
+  var size = grid.size;
+  var boardSize = 680;
+  var boardX = 110;
+  var boardY = 280;
+  var gap = 16;
+  var tileSize = (boardSize - gap * (size + 1)) / size;
+
+  context.fillStyle = "#faf8ef";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  context.fillStyle = "#776e65";
+  context.font = "bold 78px Arial";
+  context.textAlign = "center";
+  context.fillText("Supreme 2048", canvas.width / 2, 110);
+
+  context.font = "bold 42px Arial";
+  context.fillText(metadata.won ? "Vitoria" : "Fim de jogo", canvas.width / 2, 170);
+
+  context.font = "28px Arial";
+  context.fillText("Pontuacao: " + (stats.score || 0).toLocaleString(), canvas.width / 2, 220);
+  context.fillText("Maior tile: " + (stats.maxTile || 0) + " | Movimentos: " + (stats.moves || 0) +
+                   " | Tempo: " + this.formatTime(stats.time || 0), canvas.width / 2, 255);
+
+  this.drawRoundRect(context, boardX, boardY, boardSize, boardSize, 12, "#bbada0");
+
+  for (var y = 0; y < size; y++) {
+    for (var x = 0; x < size; x++) {
+      var cell = grid.cells[x][y];
+      var value = cell ? cell.value : null;
+      var tileX = boardX + gap + x * (tileSize + gap);
+      var tileY = boardY + gap + y * (tileSize + gap);
+
+      this.drawRoundRect(context, tileX, tileY, tileSize, tileSize, 8,
+                         value ? this.tileColor(value) : "#cdc1b4");
+
+      if (value) {
+        context.fillStyle = value <= 4 ? "#776e65" : "#f9f6f2";
+        context.font = "bold " + this.shareTileFontSize(value, tileSize) + "px Arial";
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText(value, tileX + tileSize / 2, tileY + tileSize / 2);
+      }
+    }
+  }
+
+  context.fillStyle = "#776e65";
+  context.font = "24px Arial";
+  context.textBaseline = "alphabetic";
+  context.fillText("Gerado pelo Supreme 2048", canvas.width / 2, 1010);
+
+  return canvas;
+};
+
+HTMLActuator.prototype.drawRoundRect = function (context, x, y, width, height, radius, color) {
+  context.fillStyle = color;
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.lineTo(x + width - radius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + radius);
+  context.lineTo(x + width, y + height - radius);
+  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  context.lineTo(x + radius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - radius);
+  context.lineTo(x, y + radius);
+  context.quadraticCurveTo(x, y, x + radius, y);
+  context.closePath();
+  context.fill();
+};
+
+HTMLActuator.prototype.tileColor = function (value) {
+  var colors = {
+    2: "#eee4da",
+    4: "#ede0c8",
+    8: "#f2b179",
+    16: "#f59563",
+    32: "#f67c5f",
+    64: "#f65e3b",
+    128: "#edcf72",
+    256: "#edcc61",
+    512: "#edc850",
+    1024: "#edc53f",
+    2048: "#edc22e"
+  };
+
+  return colors[value] || "#3c3a32";
+};
+
+HTMLActuator.prototype.shareTileFontSize = function (value, tileSize) {
+  var digits = String(value).length;
+  if (digits <= 2) return Math.floor(tileSize * 0.46);
+  if (digits === 3) return Math.floor(tileSize * 0.38);
+  return Math.floor(tileSize * 0.3);
 };
 
 HTMLActuator.prototype.showHistory = function () {

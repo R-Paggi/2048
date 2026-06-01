@@ -1098,7 +1098,9 @@ body[data-theme="jsr"] .mode-desc { color: #2d5c18; }
 
 .stats-btn-row {
   display: flex;
-  justify-content: center; }
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap; }
 
 .stats-btn {
   background: #8f7a66;
@@ -1111,6 +1113,9 @@ body[data-theme="jsr"] .mode-desc { color: #2d5c18; }
   font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;
   font-weight: bold;
   cursor: pointer; }
+
+.stats-share-btn {
+  background: #f65e3b; }
 
 .stats-history-list {
   display: flex;
