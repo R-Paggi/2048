@@ -8,58 +8,33 @@
   <meta name="HandheldFriendly" content="True">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
   <style>
-    .players-container {
-      display: flex;
-      gap: 40px;
-      justify-content: center;
-    }
-    .player-section {
-      flex: 1;
-      max-width: 500px;
-    }
-    .player-label {
-      text-align: center;
-      font-size: 24px;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
+    .players-container { display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; }
+    .player-section { flex: 1; max-width: 540px; }
+    .player-label { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 6px; }
     .player1-label { color: #f65e3b; }
     .player2-label { color: #3b8bf6; }
-    .controls-hint {
-      text-align: center;
-      font-size: 13px;
-      color: #999;
-      margin-bottom: 8px;
-    }
-    .winner-banner {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.7);
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-    }
+    .controls-hint { text-align: center; font-size: 13px; color: #999; margin-bottom: 8px; }
+    .winner-banner { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 9999; }
     .winner-banner.show { display: flex; }
-    .winner-box {
-      background: #fff;
-      border-radius: 12px;
-      padding: 40px 60px;
-      text-align: center;
-    }
+    .winner-box { background: #fff; border-radius: 12px; padding: 40px 60px; text-align: center; }
     .winner-box h2 { font-size: 48px; margin-bottom: 16px; }
-    .winner-box button {
-      font-size: 18px;
-      padding: 10px 30px;
-      cursor: pointer;
-      border: none;
-      background: #8f7a66;
-      color: #fff;
-      border-radius: 6px;
-    }
+    .winner-box button { font-size: 18px; padding: 10px 30px; cursor: pointer; border: none; background: #8f7a66; color: #fff; border-radius: 6px; }
   </style>
 </head>
 <body>
+
+  <!-- TELA DE SELEÇÃO -->
+  <div id="size-selection">
+    <h1>2048</h1>
+    <p>Choose the board size</p>
+    <div class="size-options">
+      <button class="size-btn" onclick="startGame(3)">3×3</button>
+      <button class="size-btn default" onclick="startGame(4)">4×4</button>
+      <button class="size-btn" onclick="startGame(5)">5×5</button>
+    </div>
+  </div>
+
+  <!-- BANNER DE VENCEDOR -->
   <div class="winner-banner" id="winner-banner">
     <div class="winner-box">
       <h2 id="winner-text"></h2>
@@ -68,32 +43,12 @@
     </div>
   </div>
 
-  <div class="container">
-    <div class="heading">
-      <h1 class="title">2048</h1>
-    </div>
-    <div class="above-game">
-      <p class="game-intro">First to reach the <strong>2048 tile</strong> wins!</p>
-    </div>
+  <div class="container" style="text-align:center; padding-top: 20px;">
+    <h1 class="title" style="float:none; display:inline-block;">2048</h1>
+    <p style="color:#776e65;">First to reach the <strong>2048 tile</strong> wins!</p>
   </div>
 
-<<<<<<< HEAD
   <div class="players-container">
-=======
-    <div class="timer-container timer-hidden" aria-live="polite">
-      <span class="timer-label">Tempo</span>
-      <span class="timer-value">--</span>
-    </div>
-
-    <div class="game-container">
-      <div class="game-message">
-        <p></p>
-        <div class="lower">
-	        <a class="keep-playing-button">Keep going</a>
-          <a class="retry-button">Try again</a>
-        </div>
-      </div>
->>>>>>> 2600a93d712238063fd72d6bfd56adc3734800e5
 
     <div class="player-section">
       <div class="player-label player1-label">Player 1</div>
@@ -107,12 +62,7 @@
         </div>
         <div class="game-container" id="game-container-p1">
           <div class="game-message"><p></p><div class="lower"><a class="keep-playing-button">Keep going</a><a class="retry-button">Try again</a></div></div>
-          <div class="grid-container">
-            <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
-            <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
-            <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
-            <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
-          </div>
+          <div class="grid-container"></div>
           <div class="tile-container"></div>
         </div>
       </div>
@@ -123,19 +73,14 @@
       <div class="controls-hint">← ↑ → ↓</div>
       <div class="container">
         <div class="heading">
-          <div class="scores-container">
+          <div class="scores-containers">
             <div class="score-container" id="score-p2">0</div>
             <div class="best-container" id="best-p2">0</div>
           </div>
         </div>
         <div class="game-container" id="game-container-p2">
           <div class="game-message"><p></p><div class="lower"><a class="keep-playing-button">Keep going</a><a class="retry-button">Try again</a></div></div>
-          <div class="grid-container">
-            <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
-            <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
-            <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
-            <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
-          </div>
+          <div class="grid-container"></div>
           <div class="tile-container"></div>
         </div>
       </div>
@@ -157,5 +102,36 @@
   <script src="js/game_manager_p1.js"></script>
   <script src="js/game_manager_p2.js"></script>
   <script src="js/application.js"></script>
+
+  <script>
+    function buildGrids(size) {
+      ["game-container-p1", "game-container-p2"].forEach(function(id) {
+        var grid = document.getElementById(id).querySelector(".grid-container");
+        grid.innerHTML = "";
+        for (var r = 0; r < size; r++) {
+          var row = document.createElement("div");
+          row.className = "grid-row";
+          for (var c = 0; c < size; c++) {
+            var cell = document.createElement("div");
+            cell.className = "grid-cell";
+            row.appendChild(cell);
+          }
+          grid.appendChild(row);
+        }
+      });
+    }
+
+    function startGame(size) {
+      localStorage.clear();
+      localStorage.setItem("boardSize", size);
+      document.getElementById("size-selection").style.display = "none";
+      document.body.classList.remove("size-3", "size-4", "size-5");
+      document.body.classList.add("size-" + size);
+      buildGrids(size);
+      window.__gm1 = new GameManager1(size, KeyboardInputManagerP1, HTMLActuatorP1, LocalStorageManagerP1);
+      window.__gm2 = new GameManager2(size, KeyboardInputManagerP2, HTMLActuatorP2, LocalStorageManagerP2);
+    }
+  </script>
+
 </body>
 </html>
