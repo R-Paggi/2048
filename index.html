@@ -19,6 +19,28 @@
     .winner-box { background: #fff; border-radius: 12px; padding: 40px 60px; text-align: center; }
     .winner-box h2 { font-size: 48px; margin-bottom: 16px; }
     .winner-box button { font-size: 18px; padding: 10px 30px; cursor: pointer; border: none; background: #8f7a66; color: #fff; border-radius: 6px; }
+
+    .undo-btn {
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      padding: 8px 0;
+      background: #8f7a66;
+      color: #f9f6f2;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: bold;
+      font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;
+      cursor: pointer;
+    }
+    .undo-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .undo-btn:hover:not(:disabled) {
+      background: #776e65;
+    }
   </style>
 </head>
 <body>
@@ -65,6 +87,7 @@
           <div class="grid-container"></div>
           <div class="tile-container"></div>
         </div>
+        <button id="undo-p1" class="undo-btn" disabled onclick="window.__gm1 && window.__gm1.undo()">↩ Undo (P1)</button>
       </div>
     </div>
 
@@ -83,6 +106,7 @@
           <div class="grid-container"></div>
           <div class="tile-container"></div>
         </div>
+        <button id="undo-p2" class="undo-btn" disabled onclick="window.__gm2 && window.__gm2.undo()">↩ Undo (P2)</button>
       </div>
     </div>
 
