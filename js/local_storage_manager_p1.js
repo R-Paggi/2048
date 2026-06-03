@@ -18,7 +18,7 @@ window.fakeStorage = {
   }
 };
 
-function LocalStorageManager1() {
+function LocalStorageManagerP1() {
   this.bestScoreKey     = "bestScore";
   this.gameStateKey     = "gameState";
 
@@ -26,7 +26,7 @@ function LocalStorageManager1() {
   this.storage = supported ? window.localStorage : window.fakeStorage;
 }
 
-LocalStorageManager1.prototype.localStorageSupported = function () {
+LocalStorageManagerP1.prototype.localStorageSupported = function () {
   var testKey = "test";
 
   try {
@@ -40,24 +40,24 @@ LocalStorageManager1.prototype.localStorageSupported = function () {
 };
 
 // Best score getters/setters
-LocalStorageManager1.prototype.getBestScore = function () {
+LocalStorageManagerP1.prototype.getBestScore = function () {
   return this.storage.getItem(this.bestScoreKey) || 0;
 };
 
-LocalStorageManager1.prototype.setBestScore = function (score) {
+LocalStorageManagerP1.prototype.setBestScore = function (score) {
   this.storage.setItem(this.bestScoreKey, score);
 };
 
 // Game state getters/setters and clearing
-LocalStorageManager1.prototype.getGameState = function () {
+LocalStorageManagerP1.prototype.getGameState = function () {
   var stateJSON = this.storage.getItem(this.gameStateKey);
   return stateJSON ? JSON.parse(stateJSON) : null;
 };
 
-LocalStorageManager1.prototype.setGameState = function (gameState) {
+LocalStorageManagerP1.prototype.setGameState = function (gameState) {
   this.storage.setItem(this.gameStateKey, JSON.stringify(gameState));
 };
 
-LocalStorageManager1.prototype.clearGameState = function () {
+LocalStorageManagerP1.prototype.clearGameState = function () {
   this.storage.removeItem(this.gameStateKey);
 };
