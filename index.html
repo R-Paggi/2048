@@ -5,7 +5,6 @@
   <title>2048 - 2 Players</title>
   <link href="style/main.css" rel="stylesheet" type="text/css">
   <link rel="shortcut icon" href="favicon.ico">
-  <meta name="HandheldFriendly" content="True">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
   <style>
     .players-container { display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; }
@@ -14,80 +13,130 @@
     .player1-label { color: #f65e3b; }
     .player2-label { color: #3b8bf6; }
     .controls-hint { text-align: center; font-size: 13px; color: #999; margin-bottom: 8px; }
-    .winner-banner { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 9999; }
-    .winner-banner.show { display: flex; }
-    .winner-box { background: #fff; border-radius: 12px; padding: 40px 60px; text-align: center; }
-    .winner-box h2 { font-size: 48px; margin-bottom: 16px; }
-    .winner-box button { font-size: 18px; padding: 10px 30px; cursor: pointer; border: none; background: #8f7a66; color: #fff; border-radius: 6px; }
 
-    .undo-btn {
-      display: block;
-      width: 100%;
-      margin-top: 8px;
-      padding: 8px 0;
-      background: #8f7a66;
-      color: #f9f6f2;
-      border: none;
-      border-radius: 4px;
-      font-size: 16px;
-      font-weight: bold;
-      font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;
-      cursor: pointer;
+    /* ESTILOS DA TELA DE ESTATÍSTICAS (MODAL) */
+    .stats-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 10005;
+      font-family: "Clear Sans", sans-serif; color: #333;
     }
-    .undo-btn:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
+    .stats-overlay.show { display: flex; }
+    .stats-modal { background: #faf8f5; border-radius: 10px; padding: 30px; width: 90%; max-width: 500px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); text-align: center;}
+    .stats-modal h2 { margin-top: 0; color: #776e65; font-size: 32px; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; text-align: left; }
+    .stats-item { background: #bbada0; padding: 12px; border-radius: 6px; color: #fff; }
+    .stats-item label { display: block; font-size: 12px; text-transform: uppercase; opacity: 0.8; }
+    .stats-item span { font-size: 20px; font-weight: bold; display: block; margin-top: 4px; }
+    .stats-item .record-hint { font-size: 11px; font-style: italic; opacity: 0.9; margin-top: 2px; }
+    
+    .history-table-container { max-height: 200px; overflow-y: auto; margin: 15px 0; border: 1px solid #ccc; border-radius: 4px; }
+    .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .history-table th { background: #776e65; color: #fff; padding: 8px; position: sticky; top: 0; }
+    .history-table td { padding: 8px; border-bottom: 1px solid #ddd; text-align: center; }
+
+    .menu-bar { text-align: center; margin-bottom: 15px; }
+    .menu-btn { padding: 8px 16px; background: #8f7a66; color: #fff; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin: 0 5px; }
+    .menu-btn:hover { background: #776e65; }
+
+    /* Estilos de seleção originais mantidos */
+    #size-selection {
+      position: fixed; top:0; left:0; right:0; bottom:0; background: #faf8f5; z-index: 10000;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: "Clear Sans", sans-serif;
     }
-    .undo-btn:hover:not(:disabled) {
-      background: #776e65;
-    }
+    .config-group { margin-bottom: 20px; text-align: center; }
+    .btn-row { display: flex; gap: 10px; }
+    .cfg-btn { padding: 10px 20px; background: #9e8e7f; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .cfg-btn.active { background: #8f7a66; box-shadow: 0 0 0 3px #f65e3b; }
   </style>
 </head>
 <body>
 
-  <!-- TELA DE SELEÇÃO -->
   <div id="size-selection">
-    <h1>2048</h1>
-    <p>Choose the board size</p>
-    <div class="size-options">
-      <button class="size-btn" onclick="startGame(3)">3×3</button>
-      <button class="size-btn default" onclick="startGame(4)">4×4</button>
-      <button class="size-btn" onclick="startGame(5)">5×5</button>
+    <h1>2048 - 2 Players</h1>
+    <div class="config-group">
+      <p>Tamanho do Tabuleiro</p>
+      <div class="btn-row" id="board-size-row">
+        <button class="cfg-btn" onclick="updateSizeSelection(3)">3×3</button>
+        <button class="cfg-btn active" onclick="updateSizeSelection(4)">4×4</button>
+        <button class="cfg-btn" onclick="updateSizeSelection(5)">5×5</button>
+      </div>
+    </div>
+    <div class="config-group">
+      <p>Multiplicador de Fusão</p>
+      <div class="btn-row" id="multiplier-row">
+        <button class="cfg-btn active" onclick="updateMultiplierSelection(2)">Normal (x2)</button>
+        <button class="cfg-btn" onclick="updateMultiplierSelection(3)">Triplicar (x3)</button>
+      </div>
+    </div>
+    <button style="padding: 15px 40px; font-size: 20px;" class="cfg-btn" onclick="confirmAndStartGame()">Jogar</button>
+  </div>
+
+  <div class="stats-overlay" id="stats-overlay-modal">
+    <div class="stats-modal">
+      <h2 id="stats-modal-title">Fim de Jogo!</h2>
+      <p id="stats-modal-subtitle"></p>
+      
+      <div class="stats-grid">
+        <div class="stats-item">
+          <label>Pontuação Final</label>
+          <span id="stat-score">0</span>
+          <div class="record-hint" id="hint-score"></div>
+        </div>
+        <div class="stats-item">
+          <label>Maior Tile</label>
+          <span id="stat-tile">2</span>
+          <div class="record-hint" id="hint-tile"></div>
+        </div>
+        <div class="stats-item">
+          <label>Movimentos</label>
+          <span id="stat-moves">0</span>
+        </div>
+        <div class="stats-item">
+          <label>Tempo Total</label>
+          <span id="stat-time">0s</span>
+        </div>
+      </div>
+
+      <h3>Histórico Recente</h3>
+      <div class="history-table-container">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Jogador</th>
+              <th>Pontos</th>
+              <th>Maior Tile</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body">
+            </tbody>
+        </table>
+      </div>
+
+      <button class="menu-btn" onclick="closeStatsModal()">Fechar</button>
+      <button class="menu-btn" style="background:#f65e3b;" onclick="location.reload()">Menu Inicial</button>
     </div>
   </div>
 
-  <!-- BANNER DE VENCEDOR -->
-  <div class="winner-banner" id="winner-banner">
-    <div class="winner-box">
-      <h2 id="winner-text"></h2>
-      <p>Reached the 2048 tile first!</p>
-      <button onclick="location.reload()">Play Again</button>
+  <div class="container" style="text-align:center; padding-top: 10px;">
+    <h1>2048 Dual</h1>
+    <div class="menu-bar">
+      <button class="menu-btn" onclick="openHistoryMenu()">📊 Consultar Estatísticas (Menu)</button>
+      <button class="menu-btn" onclick="location.reload()">⚙️ Alterar Configurações</button>
     </div>
-  </div>
-
-  <div class="container" style="text-align:center; padding-top: 20px;">
-    <h1 class="title" style="float:none; display:inline-block;">2048</h1>
-    <p style="color:#776e65;">First to reach the <strong>2048 tile</strong> wins!</p>
+    <p>Alcance o <strong id="dynamic-target-label">2048 tile</strong> para vencer!</p>
   </div>
 
   <div class="players-container">
-
     <div class="player-section">
       <div class="player-label player1-label">Player 1</div>
       <div class="controls-hint">W A S D</div>
       <div class="container">
-        <div class="heading">
-          <div class="scores-container">
-            <div class="score-container" id="score-p1">0</div>
-            <div class="best-container" id="best-p1">0</div>
-          </div>
-        </div>
+        <div class="heading"><div class="scores-container"><div class="score-container" id="score-p1">0</div><div class="best-container" id="best-p1">0</div></div></div>
         <div class="game-container" id="game-container-p1">
-          <div class="game-message"><p></p><div class="lower"><a class="keep-playing-button">Keep going</a><a class="retry-button">Try again</a></div></div>
-          <div class="grid-container"></div>
-          <div class="tile-container"></div>
+          <div class="game-message"><p></p><div class="lower"><a class="keep-playing-button">Keep going</a></div></div>
+          <div class="grid-container"></div><div class="tile-container"></div>
         </div>
-        <button id="undo-p1" class="undo-btn" disabled onclick="window.__gm1 && window.__gm1.undo()">↩ Undo (P1)</button>
       </div>
     </div>
 
@@ -95,21 +144,13 @@
       <div class="player-label player2-label">Player 2</div>
       <div class="controls-hint">← ↑ → ↓</div>
       <div class="container">
-        <div class="heading">
-          <div class="scores-containers">
-            <div class="score-container" id="score-p2">0</div>
-            <div class="best-container" id="best-p2">0</div>
-          </div>
-        </div>
+        <div class="heading"><div class="scores-containers"><div class="score-container" id="score-p2">0</div><div class="best-container" id="best-p2">0</div></div></div>
         <div class="game-container" id="game-container-p2">
-          <div class="game-message"><p></p><div class="lower"><a class="keep-playing-button">Keep going</a><a class="retry-button">Try again</a></div></div>
-          <div class="grid-container"></div>
-          <div class="tile-container"></div>
+          <div class="game-message"><p></p><div class="lower"><a class="keep-playing-button">Keep going</a></div></div>
+          <div class="grid-container"></div><div class="tile-container"></div>
         </div>
-        <button id="undo-p2" class="undo-btn" disabled onclick="window.__gm2 && window.__gm2.undo()">↩ Undo (P2)</button>
       </div>
     </div>
-
   </div>
 
   <script src="js/bind_polyfill.js"></script>
@@ -128,7 +169,39 @@
   <script src="js/application.js"></script>
 
   <script>
-    function buildGrids(size) {
+    var selectedSize = 4;
+    var selectedMultiplier = 2;
+
+    function updateSizeSelection(size) {
+      selectedSize = size;
+      toggleActiveButtons('board-size-row', size === 3 ? 0 : size === 4 ? 1 : 2);
+    }
+    function updateMultiplierSelection(mul) {
+      selectedMultiplier = mul;
+      toggleActiveButtons('multiplier-row', mul === 2 ? 0 : 1);
+    }
+    function toggleActiveButtons(rowId, idx) {
+      var btns = document.getElementById(rowId).getElementsByTagName('button');
+      for(var i=0; i<btns.length; i++) btns[i].classList.remove('active');
+      btns[idx].classList.add('active');
+    }
+
+    function confirmAndStartGame() {
+      localStorage.removeItem("gameStateP1");
+      localStorage.removeItem("gameStateP2");
+      localStorage.setItem("boardSize", selectedSize);
+      localStorage.setItem("fusionMultiplier", selectedMultiplier);
+
+      var targetValue = (selectedMultiplier === 3) ? 118098 : 2048;
+      localStorage.setItem("targetTileScoreValue", targetValue);
+      setupGame(selectedSize, targetValue);
+    }
+
+    function setupGame(size, targetTile) {
+      document.getElementById("size-selection").style.display = "none";
+      document.getElementById("dynamic-target-label").innerText = targetTile + " tile";
+      
+      // Inicia os grids injetando as divs internas estruturais dinamicamente
       ["game-container-p1", "game-container-p2"].forEach(function(id) {
         var grid = document.getElementById(id).querySelector(".grid-container");
         grid.innerHTML = "";
@@ -143,19 +216,86 @@
           grid.appendChild(row);
         }
       });
-    }
 
-    function startGame(size) {
-      localStorage.clear();
-      localStorage.setItem("boardSize", size);
-      document.getElementById("size-selection").style.display = "none";
-      document.body.classList.remove("size-3", "size-4", "size-5");
-      document.body.classList.add("size-" + size);
-      buildGrids(size);
       window.__gm1 = new GameManager1(size, KeyboardInputManagerP1, HTMLActuatorP1, LocalStorageManagerP1);
       window.__gm2 = new GameManager2(size, KeyboardInputManagerP2, HTMLActuatorP2, LocalStorageManagerP2);
     }
-  </script>
 
+    // INTERFACES DE EXIBIÇÃO DE METRICAS E COMPARAÇÃO COM HISTÓRICO
+    function formatTime(ms) {
+      var totalSec = Math.floor(ms / 1000);
+      var min = Math.floor(totalSec / 60);
+      var sec = totalSec % 60;
+      return min > 0 ? min + "m " + sec + "s" : sec + "s";
+    }
+
+    window.displayMatchSummary = function(currentMatch) {
+      document.getElementById("stats-modal-title").innerText = "Fim de Partida!";
+      document.getElementById("stats-modal-subtitle").innerText = currentMatch.player + " encerrou o jogo como: " + (currentMatch.result === "won" ? "Vencedor" : "Sem movimentos válidos");
+
+      document.getElementById("stat-score").innerText = currentMatch.score;
+      document.getElementById("stat-tile").innerText = currentMatch.highestTile;
+      document.getElementById("stat-moves").innerText = currentMatch.moves;
+      document.getElementById("stat-time").innerText = formatTime(currentMatch.duration);
+
+      var history = JSON.parse(localStorage.getItem("game_stats_history") || "[]");
+      
+      // Filtra o histórico para achar recordes antigos do mesmo jogador
+      var personalHistory = history.filter(function(h) { return h.player === currentMatch.player; });
+      var maxScore = 0, maxTile = 0;
+      
+      personalHistory.forEach(function(h) {
+        if(h.score > maxScore) maxScore = h.score;
+        if(h.highestTile > maxTile) maxTile = h.highestTile;
+      });
+
+      // Se a pontuação atual for igual ou maior que a máxima histórica encontrada
+      document.getElementById("hint-score").innerText = currentMatch.score >= maxScore ? "🏆 Novo Recorde Pessoal!" : "Recorde: " + maxScore;
+      document.getElementById("hint-tile").innerText = currentMatch.highestTile >= maxTile ? "🏆 Maior Bloco Obtido!" : "Recorde: " + maxTile;
+
+      renderHistoryTable(history);
+      document.getElementById("stats-overlay-modal").classList.add("show");
+    };
+
+    function renderHistoryTable(history) {
+      var tbody = document.getElementById("history-table-body");
+      tbody.innerHTML = "";
+      
+      // Lista em ordem decrescente (as mais recentes primeiro)
+      var reversed = history.slice().reverse();
+      reversed.forEach(function(match) {
+        var tr = document.createElement("tr");
+        tr.innerHTML = "<td>" + match.date + "</td>" +
+                       "<td>" + match.player + "</td>" +
+                       "<td>" + match.score + "</td>" +
+                       "<td>" + match.highestTile + "</td>";
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openHistoryMenu() {
+      document.getElementById("stats-modal-title").innerText = "Estatísticas Gerais";
+      document.getElementById("stats-modal-subtitle").innerText = "Consulta via Menu de Navegação";
+      
+      var history = JSON.parse(localStorage.getItem("game_stats_history") || "[]");
+      renderHistoryTable(history);
+      
+      document.getElementById("stats-overlay-modal").classList.add("show");
+    }
+
+    function closeStatsModal() {
+      document.getElementById("stats-overlay-modal").classList.remove("show");
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      var savedSize = localStorage.getItem("boardSize");
+      var savedTarget = localStorage.getItem("targetTileScoreValue") || "2048";
+      if (savedSize) {
+        setupGame(parseInt(savedSize, 10), parseInt(savedTarget, 10));
+      } else {
+        document.getElementById("size-selection").style.display = "flex";
+      }
+    });
+  </script>
 </body>
 </html>

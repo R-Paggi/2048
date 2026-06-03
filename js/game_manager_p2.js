@@ -3,45 +3,68 @@ function GameManager2(size, InputManager, Actuator, StorageManager) {
   this.inputManager   = new InputManager;
   this.storageManager = new StorageManager;
   this.actuator       = new Actuator;
+
   this.startTiles     = 2;
+
   this.inputManager.on("move", this.move.bind(this));
   this.inputManager.on("restart", this.restart.bind(this));
   this.inputManager.on("keepPlaying", this.keepPlaying.bind(this));
+
   this.setup();
 }
+
 GameManager2.prototype.restart = function () {
   this.storageManager.clearGameState();
   this.actuator.continueGame();
   this.setup();
 };
+
 GameManager2.prototype.keepPlaying = function () {
   this.keepPlaying = true;
   this.actuator.continueGame();
+  this.startTime = Date.now() - (this.elapsedTime || 0);
 };
+
 GameManager2.prototype.isGameTerminated = function () {
   return this.over || (this.won && !this.keepPlaying);
 };
+
 GameManager2.prototype.setup = function () {
   var previousState = this.storageManager.getGameState();
+
   if (previousState) {
     this.grid        = new Grid(previousState.grid.size, previousState.grid.cells);
     this.score       = previousState.score;
     this.over        = previousState.over;
     this.won         = previousState.won;
     this.keepPlaying = previousState.keepPlaying;
+    
+    this.movesCount  = previousState.movesCount || 0;
+    this.elapsedTime = previousState.elapsedTime || 0;
+    this.startTime   = this.over ? null : Date.now() - this.elapsedTime;
   } else {
     this.grid        = new Grid(this.size);
     this.score       = 0;
     this.over        = false;
     this.won         = false;
     this.keepPlaying = false;
+    
+    this.movesCount  = 0;
+    this.elapsedTime = 0;
+    this.startTime   = Date.now();
+
     this.addStartTiles();
   }
+
   this.actuate();
 };
+
 GameManager2.prototype.addStartTiles = function () {
-  for (var i = 0; i < this.startTiles; i++) { this.addRandomTile(); }
+  for (var i = 0; i < this.startTiles; i++) {
+    this.addRandomTile();
+  }
 };
+
 GameManager2.prototype.addRandomTile = function () {
   if (this.grid.cellsAvailable()) {
     var value = Math.random() < 0.9 ? 2 : 4;
@@ -49,15 +72,22 @@ GameManager2.prototype.addRandomTile = function () {
     this.grid.insertTile(tile);
   }
 };
+
 GameManager2.prototype.actuate = function () {
   if (this.storageManager.getBestScore() < this.score) {
     this.storageManager.setBestScore(this.score);
   }
+
+  if (this.startTime && !this.isGameTerminated()) {
+    this.elapsedTime = Date.now() - this.startTime;
+  }
+
   if (this.over) {
     this.storageManager.clearGameState();
   } else {
     this.storageManager.setGameState(this.serialize());
   }
+
   this.actuator.actuate(this.grid, {
     score:      this.score,
     over:       this.over,
@@ -66,108 +96,160 @@ GameManager2.prototype.actuate = function () {
     terminated: this.isGameTerminated()
   });
 };
+
 GameManager2.prototype.serialize = function () {
-  return { grid: this.grid.serialize(), score: this.score, over: this.over, won: this.won, keepPlaying: this.keepPlaying };
+  return {
+    grid:        this.grid.serialize(),
+    score:       this.score,
+    over:        this.over,
+    won:         this.won,
+    keepPlaying: this.keepPlaying,
+    movesCount:  this.movesCount,
+    elapsedTime: this.elapsedTime
+  };
 };
+
 GameManager2.prototype.prepareTiles = function () {
   this.grid.eachCell(function (x, y, tile) {
-    if (tile) { tile.mergedFrom = null; tile.savePosition(); }
+    if (tile) {
+      tile.mergedFrom = null;
+      tile.savePosition();
+    }
   });
 };
+
 GameManager2.prototype.moveTile = function (tile, cell) {
   this.grid.cells[tile.x][tile.y] = null;
   this.grid.cells[cell.x][cell.y] = tile;
   tile.updatePosition(cell);
 };
-GameManager2.prototype.saveUndo = function () {
-  this.undoState = {
-    grid:  JSON.parse(JSON.stringify(this.grid.serialize())),
-    score: this.score,
-    over:  this.over,
-    won:   this.won
-  };
-  this.hasUndo = true;
+
+GameManager2.prototype.getHighestTile = function () {
+  var highest = 0;
+  this.grid.eachCell(function (x, y, tile) {
+    if (tile && tile.value > highest) highest = tile.value;
+  });
+  return highest;
 };
 
-GameManager2.prototype.undo = function () {
-  if (!this.hasUndo) return;
-  this.grid  = new Grid(this.undoState.grid.size, this.undoState.grid.cells);
-  this.score = this.undoState.score;
-  this.over  = this.undoState.over;
-  this.won   = this.undoState.won;
-  this.hasUndo = false;
-  this.actuate();
-  var btn = document.getElementById("undo-p2");
-  if (btn) btn.disabled = true;
+GameManager2.prototype.saveEndGameStats = function (resultType) {
+  if (this.startTime) {
+    this.elapsedTime = Date.now() - this.startTime;
+  }
+  
+  var sizeLabel = this.size + "x" + this.size;
+  var mulLabel = "x" + (localStorage.getItem("fusionMultiplier") || "2");
+
+  var matchData = {
+    player: "Player 2",
+    score: this.score,
+    highestTile: this.getHighestTile(),
+    moves: this.movesCount,
+    duration: this.elapsedTime,
+    date: new Date().toLocaleDateString(),
+    mode: sizeLabel + " " + mulLabel,
+    result: resultType
+  };
+
+  var history = JSON.parse(localStorage.getItem("game_stats_history") || "[]");
+  history.push(matchData);
+  localStorage.setItem("game_stats_history", JSON.stringify(history));
+
+  if (typeof window.displayMatchSummary === "function") {
+    window.displayMatchSummary(matchData);
+  }
 };
 
 GameManager2.prototype.move = function (direction) {
   var self = this;
   if (this.isGameTerminated()) return;
-  this.saveUndo();
-  var btn = document.getElementById("undo-p2");
-  if (btn) btn.disabled = false;
+
   var cell, tile;
   var vector     = this.getVector(direction);
   var traversals = this.buildTraversals(vector);
   var moved      = false;
+
+  var multiplier = parseInt(localStorage.getItem("fusionMultiplier") || "2", 10);
+  var targetTileValue = parseInt(localStorage.getItem("targetTileScoreValue") || "2048", 10);
+
   this.prepareTiles();
+
   traversals.x.forEach(function (x) {
     traversals.y.forEach(function (y) {
       cell = { x: x, y: y };
       tile = self.grid.cellContent(cell);
+
       if (tile) {
         var positions = self.findFarthestPosition(cell, vector);
         var next      = self.grid.cellContent(positions.next);
+
         if (next && next.value === tile.value && !next.mergedFrom) {
-          var merged = new Tile(positions.next, tile.value * 2);
+          var merged = new Tile(positions.next, tile.value * multiplier);
           merged.mergedFrom = [tile, next];
+
           self.grid.insertTile(merged);
           self.grid.removeTile(tile);
           tile.updatePosition(positions.next);
           self.score += merged.value;
-          if (merged.value === 2048) {
+
+          if (merged.value === targetTileValue) {
             self.won = true;
-            var banner = document.getElementById("winner-banner");
-            var text   = document.getElementById("winner-text");
-            text.textContent = "Player 2 Wins!";
-            banner.classList.add("show");
+            self.saveEndGameStats("won");
           }
+          moved = true;
         } else {
           self.moveTile(tile, positions.farthest);
         }
-        if (!self.positionsEqual(cell, tile)) { moved = true; }
+
+        if (!self.positionsEqual(cell, tile)) {
+          moved = true;
+        }
       }
     });
   });
+
   if (moved) {
+    this.movesCount++;
     this.addRandomTile();
-    if (!this.movesAvailable()) { this.over = true; }
+
+    if (!this.movesAvailable()) {
+      this.over = true;
+      this.saveEndGameStats("lost");
+    }
+
     this.actuate();
   }
 };
+
 GameManager2.prototype.getVector = function (direction) {
   var map = { 0: { x: 0, y: -1 }, 1: { x: 1, y: 0 }, 2: { x: 0, y: 1 }, 3: { x: -1, y: 0 } };
   return map[direction];
 };
+
 GameManager2.prototype.buildTraversals = function (vector) {
   var traversals = { x: [], y: [] };
-  for (var pos = 0; pos < this.size; pos++) { traversals.x.push(pos); traversals.y.push(pos); }
+  for (var pos = 0; pos < this.size; pos++) {
+    traversals.x.push(pos);
+    traversals.y.push(pos);
+  }
   if (vector.x === 1) traversals.x = traversals.x.reverse();
   if (vector.y === 1) traversals.y = traversals.y.reverse();
   return traversals;
 };
+
 GameManager2.prototype.findFarthestPosition = function (cell, vector) {
   var previous;
   do {
     previous = cell;
-    cell = { x: previous.x + vector.x, y: previous.y + vector.y };
+    cell     = { x: previous.x + vector.x, y: previous.y + vector.y };
   } while (this.grid.withinBounds(cell) && this.grid.cellAvailable(cell));
   return { farthest: previous, next: cell };
 };
+
 GameManager2.prototype.movesAvailable = function () {
   return this.grid.cellsAvailable() || this.tileMatchesAvailable();
 };
+
 GameManager2.prototype.tileMatchesAvailable = function () {
   var self = this;
   var tile;
@@ -179,13 +261,14 @@ GameManager2.prototype.tileMatchesAvailable = function () {
           var vector = self.getVector(direction);
           var cell   = { x: x + vector.x, y: y + vector.y };
           var other  = self.grid.cellContent(cell);
-          if (other && other.value === tile.value) { return true; }
+          if (other && other.value === tile.value) return true;
         }
       }
     }
   }
   return false;
 };
+
 GameManager2.prototype.positionsEqual = function (first, second) {
   return first.x === second.x && first.y === second.y;
 };
