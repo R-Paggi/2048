@@ -9,6 +9,8 @@
   <style>
     .players-container { display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; }
     .player-section { flex: 1; max-width: 540px; }
+    .player-section .container { width: auto; display: inline-block; }
+    .player-section .undo-btn { width: auto; min-width: 100%; box-sizing: border-box; }
     .player-label { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 6px; }
     .player1-label { color: #f65e3b; }
     .player2-label { color: #3b8bf6; }
@@ -47,6 +49,18 @@
     .btn-row { display: flex; gap: 10px; }
     .cfg-btn { padding: 10px 20px; background: #9e8e7f; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
     .cfg-btn.active { background: #8f7a66; box-shadow: 0 0 0 3px #f65e3b; }
+
+    .undo-btn {
+      display: block; width: 100%; margin-top: 8px; padding: 8px 0;
+      background: #8f7a66; color: #f9f6f2; border: none; border-radius: 4px;
+      font-size: 16px; font-weight: bold; font-family: "Clear Sans", sans-serif; cursor: pointer;
+    }
+    .undo-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .undo-btn:hover:not(:disabled) { background: #776e65; }
+    .audio-controls {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
@@ -120,9 +134,13 @@
 
   <div class="container" style="text-align:center; padding-top: 10px;">
     <h1>2048 Dual</h1>
+    <div class="audio-controls">
+      <button id="mute-btn" class="menu-btn">🎵 Som: LIGADO</button>
+      <input type="range" id="volume-slider" min="0" max="1" step="0.05">
+    </div>
     <div class="menu-bar">
       <button class="menu-btn" onclick="openHistoryMenu()">📊 Consultar Estatísticas (Menu)</button>
-      <button class="menu-btn" onclick="location.reload()">⚙️ Alterar Configurações</button>
+      <button class="menu-btn" onclick="localStorage.removeItem(&quot;boardSize&quot;); localStorage.removeItem(&quot;targetTileScoreValue&quot;); location.reload();">⚙️ Alterar Configurações</button>
     </div>
     <p>Alcance o <strong id="dynamic-target-label">2048 tile</strong> para vencer!</p>
   </div>
@@ -137,6 +155,7 @@
           <div class="game-message"><p></p><div class="lower"><a class="keep-playing-button">Keep going</a></div></div>
           <div class="grid-container"></div><div class="tile-container"></div>
         </div>
+        <button id="undo-p1" class="undo-btn" disabled onclick="window.__gm1 && window.__gm1.undo()">↩ Undo (P1)</button>
       </div>
     </div>
 
@@ -149,6 +168,7 @@
           <div class="game-message"><p></p><div class="lower"><a class="keep-playing-button">Keep going</a></div></div>
           <div class="grid-container"></div><div class="tile-container"></div>
         </div>
+        <button id="undo-p2" class="undo-btn" disabled onclick="window.__gm2 && window.__gm2.undo()">↩ Undo (P2)</button>
       </div>
     </div>
   </div>
@@ -195,10 +215,13 @@
       var targetValue = (selectedMultiplier === 3) ? 118098 : 2048;
       localStorage.setItem("targetTileScoreValue", targetValue);
       setupGame(selectedSize, targetValue);
+      if (window.AudioManager) window.AudioManager.play();
     }
 
     function setupGame(size, targetTile) {
       document.getElementById("size-selection").style.display = "none";
+      document.body.classList.remove("size-3", "size-4", "size-5");
+      document.body.classList.add("size-" + size);
       document.getElementById("dynamic-target-label").innerText = targetTile + " tile";
       
       // Inicia os grids injetando as divs internas estruturais dinamicamente

@@ -160,9 +160,34 @@ GameManager2.prototype.saveEndGameStats = function (resultType) {
   }
 };
 
+GameManager2.prototype.saveUndo = function () {
+  this.undoState = {
+    grid:  JSON.parse(JSON.stringify(this.grid.serialize())),
+    score: this.score,
+    over:  this.over,
+    won:   this.won
+  };
+  this.hasUndo = true;
+  var btn = document.getElementById("undo-p2");
+  if (btn) btn.disabled = false;
+};
+
+GameManager2.prototype.undo = function () {
+  if (!this.hasUndo) return;
+  this.grid  = new Grid(this.undoState.grid.size, this.undoState.grid.cells);
+  this.score = this.undoState.score;
+  this.over  = this.undoState.over;
+  this.won   = this.undoState.won;
+  this.hasUndo = false;
+  this.actuate();
+  var btn = document.getElementById("undo-p2");
+  if (btn) btn.disabled = true;
+};
+
 GameManager2.prototype.move = function (direction) {
   var self = this;
   if (this.isGameTerminated()) return;
+  this.saveUndo();
 
   var cell, tile;
   var vector     = this.getVector(direction);

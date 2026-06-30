@@ -118,11 +118,36 @@ GameManager1.prototype.moveTile = function (tile, cell) {
 };
 
 // LÓGICA DE MOVIMENTAÇÃO MODIFICADA COM MULTIPLICADOR SELECIONÁVEL
+GameManager1.prototype.saveUndo = function () {
+  this.undoState = {
+    grid:  JSON.parse(JSON.stringify(this.grid.serialize())),
+    score: this.score,
+    over:  this.over,
+    won:   this.won
+  };
+  this.hasUndo = true;
+  var btn = document.getElementById("undo-p1");
+  if (btn) btn.disabled = false;
+};
+
+GameManager1.prototype.undo = function () {
+  if (!this.hasUndo) return;
+  this.grid  = new Grid(this.undoState.grid.size, this.undoState.grid.cells);
+  this.score = this.undoState.score;
+  this.over  = this.undoState.over;
+  this.won   = this.undoState.won;
+  this.hasUndo = false;
+  this.actuate();
+  var btn = document.getElementById("undo-p1");
+  if (btn) btn.disabled = true;
+};
+
 GameManager1.prototype.move = function (direction) {
   // 0: cima, 1: direita, 2: baixo, 3: esquerda
   var self = this;
 
   if (this.isGameTerminated()) return;
+  this.saveUndo();
 
   var cell, tile;
   var vector     = this.getVector(direction);
@@ -264,7 +289,3 @@ GameManager1.prototype.positionsEqual = function (first, second) {
   return first.x === second.x && first.y === second.y;
 };
 
-// Método de Undo suporte básico
-GameManager1.prototype.undo = function () {
-  // Lógica interna de desfazer jogada (se implementada)
-};

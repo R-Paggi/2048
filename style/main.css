@@ -1204,33 +1204,33 @@ body.size-3 .tile.tile-position-3-3 { transform: translate(244px, 244px); }
 
 /* 5x5 */
 body.size-5 .game-container { width: 500px; height: 500px; }
-body.size-5 .grid-cell { width: 76px; height: 76px; margin-right: 15px; }
-body.size-5 .tile, body.size-5 .tile .tile-inner { width: 76px; height: 76px; line-height: 76px; font-size: 30px; }
+body.size-5 .grid-cell { width: 82px; height: 82px; margin-right: 15px; }
+body.size-5 .tile, body.size-5 .tile .tile-inner { width: 82px; height: 82px; line-height: 82px; font-size: 30px; }
 body.size-5 .tile.tile-position-1-1 { transform: translate(0px,   0px);   }
-body.size-5 .tile.tile-position-1-2 { transform: translate(0px,   91px);  }
-body.size-5 .tile.tile-position-1-3 { transform: translate(0px,   182px); }
-body.size-5 .tile.tile-position-1-4 { transform: translate(0px,   273px); }
-body.size-5 .tile.tile-position-1-5 { transform: translate(0px,   364px); }
-body.size-5 .tile.tile-position-2-1 { transform: translate(91px,  0px);   }
-body.size-5 .tile.tile-position-2-2 { transform: translate(91px,  91px);  }
-body.size-5 .tile.tile-position-2-3 { transform: translate(91px,  182px); }
-body.size-5 .tile.tile-position-2-4 { transform: translate(91px,  273px); }
-body.size-5 .tile.tile-position-2-5 { transform: translate(91px,  364px); }
-body.size-5 .tile.tile-position-3-1 { transform: translate(182px, 0px);   }
-body.size-5 .tile.tile-position-3-2 { transform: translate(182px, 91px);  }
-body.size-5 .tile.tile-position-3-3 { transform: translate(182px, 182px); }
-body.size-5 .tile.tile-position-3-4 { transform: translate(182px, 273px); }
-body.size-5 .tile.tile-position-3-5 { transform: translate(182px, 364px); }
-body.size-5 .tile.tile-position-4-1 { transform: translate(273px, 0px);   }
-body.size-5 .tile.tile-position-4-2 { transform: translate(273px, 91px);  }
-body.size-5 .tile.tile-position-4-3 { transform: translate(273px, 182px); }
-body.size-5 .tile.tile-position-4-4 { transform: translate(273px, 273px); }
-body.size-5 .tile.tile-position-4-5 { transform: translate(273px, 364px); }
-body.size-5 .tile.tile-position-5-1 { transform: translate(364px, 0px);   }
-body.size-5 .tile.tile-position-5-2 { transform: translate(364px, 91px);  }
-body.size-5 .tile.tile-position-5-3 { transform: translate(364px, 182px); }
-body.size-5 .tile.tile-position-5-4 { transform: translate(364px, 273px); }
-body.size-5 .tile.tile-position-5-5 { transform: translate(364px, 364px); }
+body.size-5 .tile.tile-position-1-2 { transform: translate(0px,   97px);  }
+body.size-5 .tile.tile-position-1-3 { transform: translate(0px,   194px); }
+body.size-5 .tile.tile-position-1-4 { transform: translate(0px,   291px); }
+body.size-5 .tile.tile-position-1-5 { transform: translate(0px,   388px); }
+body.size-5 .tile.tile-position-2-1 { transform: translate(97px,  0px);   }
+body.size-5 .tile.tile-position-2-2 { transform: translate(97px,  97px);  }
+body.size-5 .tile.tile-position-2-3 { transform: translate(97px,  194px); }
+body.size-5 .tile.tile-position-2-4 { transform: translate(97px,  291px); }
+body.size-5 .tile.tile-position-2-5 { transform: translate(97px,  388px); }
+body.size-5 .tile.tile-position-3-1 { transform: translate(194px, 0px);   }
+body.size-5 .tile.tile-position-3-2 { transform: translate(194px, 97px);  }
+body.size-5 .tile.tile-position-3-3 { transform: translate(194px, 194px); }
+body.size-5 .tile.tile-position-3-4 { transform: translate(194px, 291px); }
+body.size-5 .tile.tile-position-3-5 { transform: translate(194px, 388px); }
+body.size-5 .tile.tile-position-4-1 { transform: translate(291px, 0px);   }
+body.size-5 .tile.tile-position-4-2 { transform: translate(291px, 97px);  }
+body.size-5 .tile.tile-position-4-3 { transform: translate(291px, 194px); }
+body.size-5 .tile.tile-position-4-4 { transform: translate(291px, 291px); }
+body.size-5 .tile.tile-position-4-5 { transform: translate(291px, 388px); }
+body.size-5 .tile.tile-position-5-1 { transform: translate(388px, 0px);   }
+body.size-5 .tile.tile-position-5-2 { transform: translate(388px, 97px);  }
+body.size-5 .tile.tile-position-5-3 { transform: translate(388px, 194px); }
+body.size-5 .tile.tile-position-5-4 { transform: translate(388px, 291px); }
+body.size-5 .tile.tile-position-5-5 { transform: translate(388px, 388px); }
 
 /* tela de seleção */
 #size-selection {
